@@ -11,7 +11,7 @@ demo](../../../examples/pipeline/demo/pipeline-mini-demo.py) to have
 a taste of how FATE Pipeline works. Default values of party ids and work
 mode may need to be modified depending on the deployment setting.
 
-```bash
+``` sourceCode bash
 python pipeline-mini-demo.py
 ```
 
@@ -84,7 +84,7 @@ hetero_lr_0 = HeteroLR(name="hetero_lr_0", early_stop="weight_diff", max_iter=10
 including `Data`, `Cache`, and `Model` input. To access `input` of a
 component, reference its `input` attribute:
 
-```python
+``` sourceCode python
 input_all = data_transform_0.input
 ```
 
@@ -125,7 +125,7 @@ for an explained demo.
 Once initialized a pipeline, job participants and initiator should be
 specified. Below is an example of initial setup of a pipeline:
 
-```python
+``` sourceCode python
 pipeline = PipeLine()
 pipeline.set_initiator(role='guest', party_id=9999)
 pipeline.set_roles(guest=9999, host=10000, arbiter=10000)
@@ -147,7 +147,7 @@ All pipeline components can be configured individually for different
 roles by setting `get_party_instance`. For instance, `DataTransform`
 component can be configured specifically for guest like this:
 
-```python
+``` sourceCode python
 data_transform_0 = DataTransform(name="data_transform_0")
 guest_component_instance = data_transform_0.get_party_instance(role='guest', party_id=9999)
 guest_component_instance.component_param(with_label=True, output_format="dense")
@@ -157,7 +157,7 @@ To include a component in a pipeline, use `add_component`. To add the
 `DataTransform` component to the previously created pipeline, try
 this:
 
-```python
+``` sourceCode python
 pipeline.add_component(data_transform_0, data=Data(data=reader_0.output.data))
 ```
 
@@ -168,7 +168,7 @@ as an example:
 
 First, import Keras and define your nn structures:
 
-```python
+``` sourceCode python
 from tensorflow.keras import optimizers
 from tensorflow.keras.layers import Dense
 
@@ -179,7 +179,7 @@ layer_1 = Dense(units=1, activation="sigmoid")
 Then, add nn layers into Homo-NN model like using Sequential class in
 Keras:
 
-```python
+``` sourceCode python
 from pipeline.component.homo_nn import HomoNN
 
 # set parameter
@@ -191,7 +191,7 @@ homo_nn_0.add(layer_1)
 Set optimizer and compile Homo-NN
 model:
 
-```python
+``` sourceCode python
 homo_nn_0.compile(optimizer=optimizers.Adam(learning_rate=0.05), metrics=["Hinge", "accuracy", "AUC"],
                   loss="binary_crossentropy")
 ```
@@ -199,7 +199,7 @@ homo_nn_0.compile(optimizer=optimizers.Adam(learning_rate=0.05), metrics=["Hinge
 Add it to
 pipeline:
 
-```python
+``` sourceCode python
 pipeline.add_component(homo_nn, data=Data(train_data=data_transform_0.output.data))
 ```
 
@@ -209,12 +209,11 @@ In version 1.7 and above, user can specify the fate's version to submit the job.
 default version will be used.  
 
 a. set global version
-```python
+``` sourceCode python
 pipeline.set_global_job_provider("fate@1.7.0")
 ```
-
 b. component with specified version
-```python
+``` sourceCode python
 homo_nn.provider = "fate@1.7.0"
 ```
 
@@ -229,7 +228,7 @@ Having added all components, user needs to first compile pipeline before
 running the designed job. After compilation, the pipeline can then be
 fit(run train job).
 
-```python
+``` sourceCode python
 pipeline.compile()
 pipeline.fit()
 ```
@@ -241,7 +240,7 @@ data, model, and summary. All query API have matching name to
 [FlowPy](flow_sdk.md), while Pipeline retrieves and returns query
 result directly to user.
 
-```python
+``` sourceCode python
 summary = pipeline.get_component("hetero_lr_0").get_summary()
 ```
 
@@ -251,7 +250,7 @@ Once fitting pipeline completes, prediction can be run on new data set.
 Before prediction, necessary components need to be first deployed. This
 step marks selected components to be used by prediction pipeline.
 
-```python
+``` sourceCode python
 # deploy select components
 pipeline.deploy_component([data_transform_0, hetero_lr_0])
 # deploy all components
@@ -264,7 +263,7 @@ pipeline.deploy_component()
 First, initiate a new pipeline, then specify data source used for
 prediction.
 
-```python
+``` sourceCode python
 predict_pipeline = PipeLine()
 predict_pipeline.add_component(reader_0)
 predict_pipeline.add_component(pipeline,
@@ -273,7 +272,7 @@ predict_pipeline.add_component(pipeline,
 
 Prediction can then be initiated on the new pipeline.
 
-```python
+``` sourceCode python
 predict_pipeline.predict()
 ```
 
@@ -281,7 +280,7 @@ In addition, since pipeline is modular, user may add new components to
 the original pipeline before running
 prediction.
 
-```python
+``` sourceCode python
 predict_pipeline.add_component(evaluation_0, data=Data(data=pipeline.hetero_lr_0.output.data))
 predict_pipeline.predict()
 ```
@@ -289,7 +288,7 @@ predict_pipeline.predict()
 If components are checkpoint saved during training process, user may specify which checkpoint model to be used for prediction.
 For an example, please refer [here](../../../examples/pipeline/demo/pipeline-deploy-demo.py).
 
-```python
+```sourceCode python
 predict_pipeline.predict(components_checkpoint={"hetero_lr_0": {"step_index": 8}})
 ```
 
@@ -297,13 +296,13 @@ predict_pipeline.predict(components_checkpoint={"hetero_lr_0": {"step_index": 8}
 
 To save a pipeline, just use **dump** interface.
 
-```python
+``` sourceCode python
 pipeline.dump("pipeline_saved.pkl")
 ```
 
 To restore a pipeline, use **load\_model\_from\_file** interface.
 
-```python
+``` sourceCode python
 from pipeline.backend.pipeline import PineLine
 PipeLine.load_model_from_file("pipeline_saved.pkl")
 ```
@@ -314,7 +313,7 @@ To get the details of a pipeline, use **describe** interface, which
 prints the "create time" fit or predict state and the constructed dsl if
 exists.
 
-```python
+``` sourceCode python
 pipeline.describe()
 ```
 
@@ -324,7 +323,7 @@ First, trained pipeline must be deployed before loading and binding
 model to online service
 [FATE-Serving](https://github.com/FederatedAI/FATE-Serving).
 
-```python
+``` sourceCode python
 # deploy select components
 pipeline.deploy_component([data_transform_0, hetero_lr_0])
 # deploy all components
@@ -334,14 +333,14 @@ pipeline.deploy_component()
 
 Then load model, file path to model storage may be supplied.
 
-```python
+``` sourceCode python
 pipeline.online.load()
 ```
 
 Last, bind model to chosen service. Optionally, provide select
 FATE-Serving address(es).
 
-```python
+``` sourceCode python
 # by default, bind model to all FATE-Serving addresses
 pipeline.online.bind("service_1")
 # bind model to specified FATE-Serving address(es) only
@@ -353,7 +352,7 @@ pipeline.online.bind("service_1", "127.0.0.1")
 To convert a trained homo model into formats of other machine learning
 system, use **convert** interface.
 
-```python
+``` sourceCode python
 pipeline.model_convert.convert()
 ```
 

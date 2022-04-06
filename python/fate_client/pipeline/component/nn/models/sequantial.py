@@ -13,12 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-_TF_KERAS_VALID = False
-try:
-    from tensorflow.python.keras.engine import base_layer
-    _TF_KERAS_VALID = True
-except ImportError:
-    pass
+from tensorflow.python.keras.engine import base_layer
 
 
 class Sequential(object):
@@ -30,7 +25,7 @@ class Sequential(object):
         return self._model is None
 
     def add(self, layer):
-        if _TF_KERAS_VALID and isinstance(layer, base_layer.Layer):
+        if isinstance(layer, base_layer.Layer):
             layer_type = "keras"
         elif isinstance(layer, dict):
             layer_type = "nn"

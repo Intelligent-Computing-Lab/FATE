@@ -6,8 +6,7 @@ Secure Information Retrieval(SIR) securely retrieves target value(s)
 from host. This module is based on [Pohlig
 Hellman](https://ee.stanford.edu/~hellman/publications/28.pdf)
 commutative encryption and [Hauck Oblivious
-Transfer(OT)](https://eprint.iacr.org/2017/1011). 
-This module is still in the research stage, has not yet been put into production.
+Transfer(OT)](https://eprint.iacr.org/2017/1011).
 
 ## How to Use
 

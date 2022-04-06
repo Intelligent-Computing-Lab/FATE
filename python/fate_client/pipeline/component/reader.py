@@ -14,14 +14,14 @@
 #  limitations under the License.
 #
 
-from pipeline.component.component_base import FateFlowComponent
+from pipeline.component.component_base import Component
 from pipeline.interface import Output
 from pipeline.param.reader_param import ReaderParam
 
 
-class Reader(FateFlowComponent, ReaderParam):
+class Reader(Component, ReaderParam):
     def __init__(self, **kwargs):
-        FateFlowComponent.__init__(self, **kwargs)
+        Component.__init__(self, **kwargs)
 
         new_kwargs = self.erase_component_base_param(**kwargs)
 

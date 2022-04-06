@@ -61,7 +61,7 @@ class Guest(hetero_linear_model_gradient.Guest, loss_sync.Guest):
         # fore_gradient = self.aggregated_forwards.join(data_instances, lambda wx, d: 0.25 * wx - 0.5 * d.label)
         return self.host_forwards
 
-    def compute_loss(self, data_instances, w, n_iter_, batch_index, loss_norm=None, batch_masked=False):
+    def compute_loss(self, data_instances, w, n_iter_, batch_index, loss_norm=None):
         """
         Compute hetero-lr loss for:
         loss = (1/N)*∑(log2 - 1/2*ywx + 1/8*(wx)^2), where y is label, w is model weight and x is features
@@ -74,8 +74,7 @@ class Guest(hetero_linear_model_gradient.Guest, loss_sync.Guest):
         current_suffix = (n_iter_, batch_index)
         n = data_instances.count()
 
-        # host_wx_y = self.host_forwards[0].join(data_instances, lambda x, y: (x, y.label))
-        host_wx_y = data_instances.join(self.host_forwards[0], lambda y, x: (x, y.label))
+        host_wx_y = self.host_forwards[0].join(data_instances, lambda x, y: (x, y.label))
         self_wx_y = self.half_d.join(data_instances, lambda x, y: (x, y.label))
 
         def _sum_ywx(wx_y):
@@ -94,24 +93,13 @@ class Guest(hetero_linear_model_gradient.Guest, loss_sync.Guest):
         # quarter_wx = self.host_forwards[0].join(self.half_d, lambda x, y: x + y)
         # ywx = quarter_wx.join(data_instances, lambda wx, d: wx * (4 * d.label) + 2).reduce(reduce_add)
 
+        self_wx_square = data_instances.mapValues(
+            lambda v: np.square(vec_dot(v.features, w.coef_) + w.intercept_)).reduce(reduce_add)
         half_wx = data_instances.mapValues(
             lambda v: vec_dot(v.features, w.coef_) + w.intercept_)
-        self_wx_square = half_wx.mapValues(
-            lambda v: np.square(v)).reduce(reduce_add)
-
-        # self_wx_square = data_instances.mapValues(
-        #    lambda v: np.square(vec_dot(v.features, w.coef_) + w.intercept_)).reduce(reduce_add)
 
         loss_list = []
-
         wx_squares = self.get_host_loss_intermediate(suffix=current_suffix)
-        if batch_masked:
-            wx_squares_sum = []
-            for square_table in wx_squares:
-                square_sum = data_instances.join(square_table, lambda inst, enc_h_squares: enc_h_squares).reduce(lambda x, y: x + y)
-                wx_squares_sum.append(square_sum)
-
-            wx_squares = wx_squares_sum
 
         if loss_norm is not None:
             host_loss_regular = self.get_host_loss_regular(suffix=current_suffix)
@@ -126,7 +114,7 @@ class Guest(hetero_linear_model_gradient.Guest, loss_sync.Guest):
             wx_square = wx_squares[0]
             wxg_wxh = half_wx.join(host_forward, lambda wxg, wxh: wxg * wxh).reduce(reduce_add)
             loss = np.log(2) - 0.5 * (1 / n) * ywx + 0.125 * (1 / n) * \
-                   (self_wx_square + wx_square + 8 * wxg_wxh)
+                   (self_wx_square + wx_square + 2 * wxg_wxh)
             if loss_norm is not None:
                 loss += loss_norm
                 loss += host_loss_regular[0]
@@ -180,7 +168,7 @@ class Host(hetero_linear_model_gradient.Host, loss_sync.Host):
         encrypt_half_g = cipher[batch_index].encrypt(half_g)
         return half_g, encrypt_half_g
 
-    def compute_loss(self, lr_weights, optimizer, n_iter_, batch_index, cipher_operator, batch_masked=False):
+    def compute_loss(self, lr_weights, optimizer, n_iter_, batch_index, cipher_operator):
         """
         Compute hetero-lr loss for:
         loss = (1/N)*∑(log2 - 1/2*ywx + 1/8*(wx)^2), where y is label, w is model weight and x is features
@@ -191,15 +179,8 @@ class Host(hetero_linear_model_gradient.Host, loss_sync.Host):
         where Wh*Xh is a table obtain from host and ∑(Wh*Xh)^2 is a sum number get from host.
         """
         current_suffix = (n_iter_, batch_index)
-
-        # self_wx_square = self.forwards.mapValues(lambda x: np.square(4 * x)).reduce(reduce_add)
-        self_wx_square = self.forwards.mapValues(lambda x: np.square(4 * x))
-        if not batch_masked:
-            self_wx_square = self_wx_square.reduce(reduce_add)
-            en_wx_square = cipher_operator.encrypt(self_wx_square)
-        else:
-            en_wx_square = self_wx_square.mapValues(lambda x: cipher_operator.encrypt(x))
-
+        self_wx_square = self.forwards.mapValues(lambda x: np.square(4 * x)).reduce(reduce_add)
+        en_wx_square = cipher_operator.encrypt(self_wx_square)
         self.remote_loss_intermediate(en_wx_square, suffix=current_suffix)
 
         loss_regular = optimizer.loss_norm(lr_weights)

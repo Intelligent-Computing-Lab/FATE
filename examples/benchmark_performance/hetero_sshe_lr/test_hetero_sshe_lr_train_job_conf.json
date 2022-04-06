@@ -100,27 +100,25 @@
                 "0": {
                     "reader_0": {
                         "table": {
-                            "name": "performance_hetero_host_tag_value",
+                            "name": "performance_hetero_host",
                             "namespace": "performance"
                         }
                     },
                     "data_transform_1": {
-                        "input_format": "tag",
-                        "delimitor": ";",
-                        "tag_with_value": true,
+                        "input_format": "dense",
+                        "delimitor": ",",
                         "with_label": false,
                         "output_format": "dense"
                     },
                     "reader_1": {
                         "table": {
-                            "name": "performance_hetero_host_tag_value",
+                            "name": "performance_hetero_host",
                             "namespace": "performance"
                         }
                     },
                     "data_transform_0": {
-                        "input_format": "tag",
-                        "delimitor": ";",
-                        "tag_with_value": true,
+                        "input_format": "dense",
+                        "delimitor": ",",
                         "with_label": false,
                         "output_format": "dense"
                     }

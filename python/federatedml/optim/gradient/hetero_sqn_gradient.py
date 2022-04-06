@@ -44,10 +44,6 @@ class HeteroStochasticQuansiNewton(hetero_linear_model_gradient.HeteroGradientBa
         self.memory_M = sqn_param.memory_M
         self.sample_size = sqn_param.sample_size
         self.random_seed = sqn_param.random_seed
-        self.raise_weight_overflow_error = True
-
-    def unset_raise_weight_overflow_error(self):
-        self.raise_weight_overflow_error = False
 
     @property
     def iter_k(self):
@@ -66,8 +62,7 @@ class HeteroStochasticQuansiNewton(hetero_linear_model_gradient.HeteroGradientBa
     def _renew_w_tilde(self):
         self.last_w_tilde = self.this_w_tilde
         self.this_w_tilde = LinearModelWeights(np.zeros_like(self.last_w_tilde.unboxed),
-                                               self.last_w_tilde.fit_intercept,
-                                               raise_overflow_error=self.raise_weight_overflow_error)
+                                               self.last_w_tilde.fit_intercept)
 
     def _update_hessian(self, *args):
         raise NotImplementedError("Should not call here")
@@ -78,7 +73,7 @@ class HeteroStochasticQuansiNewton(hetero_linear_model_gradient.HeteroGradientBa
         else:
             self.this_w_tilde += model_weights
 
-    def compute_gradient_procedure(self, *args, **kwargs):
+    def compute_gradient_procedure(self, *args):
         data_instances = args[0]
         encrypted_calculator = args[1]
         model_weights = args[2]
@@ -101,14 +96,13 @@ class HeteroStochasticQuansiNewton(hetero_linear_model_gradient.HeteroGradientBa
                 self._update_hessian(data_instances, optimizer, cipher_operator)
             self.last_w_tilde = self.this_w_tilde
             self.this_w_tilde = LinearModelWeights(np.zeros_like(self.last_w_tilde.unboxed),
-                                                   self.last_w_tilde.fit_intercept,
-                                                   raise_overflow_error=self.raise_weight_overflow_error)
+                                                   self.last_w_tilde.fit_intercept)
             # LOGGER.debug("After replace, last_w_tilde: {}, this_w_tilde: {}".format(self.last_w_tilde.unboxed,
             #                                                                         self.this_w_tilde.unboxed))
 
         return gradient_results
 
-    def compute_loss(self, *args, **kwargs):
+    def compute_loss(self, *args):
         loss = self.gradient_computer.compute_loss(*args)
         return loss
 
@@ -181,9 +175,7 @@ class HeteroStochasticQuansiNewtonArbiter(HeteroStochasticQuansiNewton):
         optimizer.set_hess_matrix(self.opt_Hess)
         delta_grad = self.gradient_computer.compute_gradient_procedure(
             cipher_operator, optimizer, n_iter_, batch_index)
-        self._update_w_tilde(LinearModelWeights(delta_grad,
-                                                fit_intercept=False,
-                                                raise_overflow_error=self.raise_weight_overflow_error))
+        self._update_w_tilde(LinearModelWeights(delta_grad, fit_intercept=False))
         if self.iter_k % self.update_interval_L == 0:
             self.count_t += 1
             # LOGGER.debug("Before division, this_w_tilde: {}".format(self.this_w_tilde.unboxed))
@@ -195,8 +187,7 @@ class HeteroStochasticQuansiNewtonArbiter(HeteroStochasticQuansiNewton):
                 self._update_hessian(cipher_operator)
             self.last_w_tilde = self.this_w_tilde
             self.this_w_tilde = LinearModelWeights(np.zeros_like(self.last_w_tilde.unboxed),
-                                                   self.last_w_tilde.fit_intercept,
-                                                   raise_overflow_error=self.raise_weight_overflow_error)
+                                                   self.last_w_tilde.fit_intercept)
         return delta_grad
 
         # self._update_w_tilde(cipher_operator)

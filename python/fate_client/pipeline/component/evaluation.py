@@ -15,15 +15,15 @@
 #
 
 from pipeline.param.evaluation_param import EvaluateParam
-from pipeline.component.component_base import FateComponent
+from pipeline.component.component_base import Component
 from pipeline.interface import Input
 from pipeline.interface import Output
 from pipeline.utils.logger import LOGGER
 
 
-class Evaluation(FateComponent, EvaluateParam):
+class Evaluation(Component, EvaluateParam):
     def __init__(self, **kwargs):
-        FateComponent.__init__(self, **kwargs)
+        Component.__init__(self, **kwargs)
 
         # print (self.name)
         LOGGER.debug(f"{self.name} component created")

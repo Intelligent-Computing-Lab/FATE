@@ -23,11 +23,9 @@ from federatedml.util import consts
 class Guest(object):
     def _register_batch_data_index_transfer(self, batch_data_info_transfer,
                                             batch_data_index_transfer,
-                                            batch_validate_info_transfer,
                                             has_arbiter):
         self.batch_data_info_transfer = batch_data_info_transfer.disable_auto_clean()
         self.batch_data_index_transfer = batch_data_index_transfer.disable_auto_clean()
-        self.batch_validate_info_transfer = batch_validate_info_transfer
         self.has_arbiter = has_arbiter
 
     def sync_batch_info(self, batch_info, suffix=tuple()):
@@ -45,21 +43,11 @@ class Guest(object):
                                               role=consts.HOST,
                                               suffix=suffix)
 
-    def sync_batch_validate_info(self, suffix):
-        if not self.batch_validate_info_transfer:
-            raise ValueError("batch_validate_info should be create in transfer variable")
-
-        validate_info = self.batch_validate_info_transfer.get(idx=-1,
-                                                              suffix=suffix)
-        return validate_info
-
 
 class Host(object):
-    def _register_batch_data_index_transfer(self, batch_data_info_transfer, batch_data_index_transfer,
-                                            batch_validate_info_transfer):
+    def _register_batch_data_index_transfer(self, batch_data_info_transfer, batch_data_index_transfer):
         self.batch_data_info_transfer = batch_data_info_transfer.disable_auto_clean()
         self.batch_data_index_transfer = batch_data_index_transfer.disable_auto_clean()
-        self.batch_validate_info_transfer = batch_validate_info_transfer
 
     def sync_batch_info(self, suffix=tuple()):
         LOGGER.debug("In sync_batch_info, suffix is :{}".format(suffix))
@@ -76,11 +64,6 @@ class Host(object):
         batch_index = self.batch_data_index_transfer.get(idx=0,
                                                          suffix=suffix)
         return batch_index
-
-    def sync_batch_validate_info(self, validate_info, suffix=tuple()):
-        self.batch_validate_info_transfer.remote(obj=validate_info,
-                                                 role=consts.GUEST,
-                                                 suffix=suffix)
 
 
 class Arbiter(object):

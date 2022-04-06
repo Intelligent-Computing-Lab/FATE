@@ -15,15 +15,15 @@
 #
 
 from pipeline.param.model_loader_param import CheckpointParam
-from pipeline.component.component_base import FateFlowComponent
+from pipeline.component.component_base import Component
 from pipeline.interface import Input
 from pipeline.interface import Output
 from pipeline.utils.logger import LOGGER
 
 
-class ModelLoader(FateFlowComponent, CheckpointParam):
+class ModelLoader(Component, CheckpointParam):
     def __init__(self, **kwargs):
-        FateFlowComponent.__init__(self, **kwargs)
+        Component.__init__(self, **kwargs)
 
         # print (self.name)
         LOGGER.debug(f"{self.name} component created")

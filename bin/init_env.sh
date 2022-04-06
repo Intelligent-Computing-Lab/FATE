@@ -20,14 +20,14 @@ fate_project_base=$(cd `dirname "$(realpath "${BASH_SOURCE[0]:-${(%):-%x}}")"`; 
 export FATE_PROJECT_BASE=$fate_project_base
 export FATE_DEPLOY_BASE=$fate_project_base
 export EGGROLL_HOME=
-export PYTHONPATH=
+export PYTHONPATH=/giteerepostory/FATE/python:/giteerepostory/FATE/fateflow/python
 
 export FATE_LOG_LEVEL=DEBUG
 export FATE_PROFILE_LOG_ENABLED=0
 export EGGROLL_LOG_LEVEL=INFO
 
-venv=
-export JAVA_HOME=
+venv=/software/env
+export JAVA_HOME=/giteerepostory/FATE/env/jdk/jdk-8u192/
 export PATH=$PATH:$JAVA_HOME/bin
 source ${venv}/bin/activate
 

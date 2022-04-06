@@ -52,8 +52,5 @@ class StorageTable(StorageTableBase):
     def _destroy(self):
         pass
 
-    def _save_as(self, **kwargs):
-        pass
-
     def _count(self):
         return path_utils.get_data_table_count(self._address.path)

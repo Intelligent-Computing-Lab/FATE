@@ -14,14 +14,14 @@
 #  limitations under the License.
 #
 
-from pipeline.component.component_base import FateComponent
+from pipeline.component.component_base import Component
 from pipeline.component.nn.models.sequantial import Sequential
 from pipeline.interface import Input
 from pipeline.interface import Output
 from pipeline.utils.tools import extract_explicit_parameter
 
 
-class HomoNN(FateComponent):
+class HomoNN(Component):
     @extract_explicit_parameter
     def __init__(self, name=None, max_iter=100, batch_size=-1,
                  secure_aggregate=True, aggregate_every_n_epoch=1,
@@ -34,7 +34,7 @@ class HomoNN(FateComponent):
         explicit_parameters["metrics"] = None
         explicit_parameters["nn_define"] = None
         explicit_parameters["config_type"] = "keras"
-        FateComponent.__init__(self, **explicit_parameters)
+        Component.__init__(self, **explicit_parameters)
 
         if "name" in explicit_parameters:
             del explicit_parameters["name"]

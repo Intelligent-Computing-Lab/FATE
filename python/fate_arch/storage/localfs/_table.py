@@ -99,8 +99,8 @@ class StorageTable(StorageTableBase):
             count += 1
         return count
 
-    def _save_as(
-        self, address, partitions=None, name=None, namespace=None, **kwargs
+    def save_as(
+        self, address, partitions=None, name=None, namespace=None, schema=None, **kwargs
     ):
         self._local_fs_client.copy_file(src=self.path, dst=address.path)
         return StorageTable(
@@ -135,7 +135,7 @@ class StorageTable(StorageTableBase):
             selector = fs.FileSelector(self.path)
             file_infos = self._local_fs_client.get_file_info(selector)
             for file_info in file_infos:
-                if file_info.base_name.startswith(".") or file_info.base_name.startswith("_"):
+                if file_info.base_name == "_SUCCESS":
                     continue
                 assert (
                     file_info.is_file

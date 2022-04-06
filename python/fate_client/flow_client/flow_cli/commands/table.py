@@ -91,9 +91,6 @@ def add(ctx, **kwargs):
 
 @table.command("bind", short_help="Bind Table Command")
 @cli_args.CONF_PATH
-@click.option('--drop', is_flag=True, default=False,
-              help="If specified, data of old version would be replaced by the current version. "
-                   "Otherwise, current upload task would be rejected. (default: False)")
 @click.pass_context
 def bind(ctx, **kwargs):
     """
@@ -109,42 +106,6 @@ def bind(ctx, **kwargs):
     """
     config_data, _ = preprocess(**kwargs)
     access_server('post', ctx, 'table/bind', config_data)
-
-
-@table.command("connector-create", short_help="create or update connector")
-@cli_args.CONF_PATH
-@click.pass_context
-def connector_create_or_update(ctx, **kwargs):
-    """
-    - DESCRIPTION:
-
-    \b
-    Create a connector to fate address.
-
-    \b
-    - USAGE:
-        flow table connector-create -c fateflow/examples/connector/create_or_update.json
-    """
-    config_data, _ = preprocess(**kwargs)
-    access_server('post', ctx, 'table/connector/create', config_data)
-
-
-@table.command("connector-query", short_help="query connector info")
-@cli_args.CONNECTOR_NAME
-@click.pass_context
-def connector_query(ctx, **kwargs):
-    """
-    - DESCRIPTION:
-
-    \b
-    query connector info.
-
-    \b
-    - USAGE:
-        flow table connector-query --connector-name xxx
-    """
-    config_data, _ = preprocess(**kwargs)
-    access_server('post', ctx, 'table/connector/query', config_data)
 
 
 @table.command("tracking-source", short_help="Tracking Source Table")

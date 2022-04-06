@@ -38,10 +38,6 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
         self.guest_depth = param.guest_depth
         self.host_depth = param.host_depth
 
-        if self.work_mode == consts.MIX_TREE and self.EINI_inference:
-            LOGGER.info('Mix mode of fast-sbt does not support EINI predict, reset to False')
-            self.EINI_inference = False
-
     def get_tree_plan(self, idx):
 
         if not self.init_tree_plan:
@@ -82,11 +78,14 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
 
         tree_type, target_host_id = self.get_tree_plan(epoch_idx)
         self.check_host_number(tree_type)
+        self.check_run_sp_opt()
         tree = HeteroFastDecisionTreeHost(tree_param=self.tree_param)
         tree.init(flowid=self.generate_flowid(epoch_idx, booster_dim),
                   valid_features=self.sample_valid_features(),
                   data_bin=self.data_bin, bin_split_points=self.bin_split_points,
                   bin_sparse_points=self.bin_sparse_points,
+                  run_sprase_opt=self.run_sparse_opt,
+                  data_bin_dense=self.data_bin_dense,
                   runtime_idx=self.component_properties.local_partyid,
                   goss_subsample=self.enable_goss,
                   bin_num=self.bin_num,
@@ -102,8 +101,6 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
         LOGGER.debug('tree work mode is {}'.format(tree_type))
         tree.fit()
         self.update_feature_importance(tree.get_feature_importance())
-        if self.work_mode == consts.LAYERED_TREE:
-            self.sync_feature_importance()
         return tree
 
     def load_booster(self, model_meta, model_param, epoch_idx, booster_idx):
@@ -136,7 +133,7 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
         """
         in mix mode, a sample can reach leaf directly
         """
-        new_node_pos = node_pos + 0
+
         for i in range(len(trees)):
 
             tree = trees[i]
@@ -144,9 +141,9 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
                 continue
             leaf_id = tree.host_local_traverse_tree(sample, tree.tree_node, use_missing=tree.use_missing,
                                                     zero_as_missing=tree.zero_as_missing)
-            new_node_pos[i] = leaf_id
+            node_pos[i] = leaf_id
 
-        return new_node_pos
+        return node_pos
 
     # this func will be called by super class's predict()
     def boosting_fast_predict(self, data_inst, trees: List[HeteroFastDecisionTreeHost]):
@@ -161,7 +158,7 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
             node_pos = data_inst.mapValues(lambda x: np.zeros(tree_num, dtype=np.int64))
             local_traverse_func = functools.partial(self.traverse_host_local_trees, trees=trees)
             leaf_pos = node_pos.join(data_inst, local_traverse_func)
-            self.hetero_sbt_transfer_variable.host_predict_data.remote(leaf_pos, idx=0, role=consts.GUEST)
+            self.predict_transfer_inst.host_predict_data.remote(leaf_pos, idx=0, role=consts.GUEST)
 
         else:
 
@@ -188,16 +185,15 @@ class HeteroFastSecureBoostingTreeHost(HeteroSecureBoostingTreeHost):
         feature_importances = list(self.feature_importances_.items())
         feature_importances = sorted(feature_importances, key=itemgetter(1), reverse=True)
         feature_importance_param = []
-        if self.work_mode == consts.MIX_TREE:
-            LOGGER.debug('host feat importance is {}'.format(feature_importances))
-            for fid, importance in feature_importances:
-                feature_importance_param.append(FeatureImportanceInfo(sitename=self.role,
-                                                                      fid=fid,
-                                                                      importance=importance.importance,
-                                                                      fullname=self.feature_name_fid_mapping[fid],
-                                                                      main=importance.main_type
-                                                                      ))
-            model_param.feature_importances.extend(feature_importance_param)
+        LOGGER.debug('host feat importance is {}'.format(feature_importances))
+        for fid, importance in feature_importances:
+            feature_importance_param.append(FeatureImportanceInfo(sitename=self.role,
+                                                                  fid=fid,
+                                                                  importance=importance.importance,
+                                                                  fullname=self.feature_name_fid_mapping[fid],
+                                                                  main=importance.main_type
+                                                                  ))
+        model_param.feature_importances.extend(feature_importance_param)
 
         return param_name, model_param
 

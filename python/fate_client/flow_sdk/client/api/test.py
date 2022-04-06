@@ -62,7 +62,7 @@ class Test(BaseFlowAPI):
                 },
                 "common": {
                     "secure_add_example_0": {
-                        "partition": 4,
+                        "partition": 48,
                         "data_num": 1000
                     }
                 }

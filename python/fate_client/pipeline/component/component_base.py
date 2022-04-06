@@ -15,7 +15,6 @@
 #
 import copy
 
-from pipeline.constant import ProviderType
 from pipeline.utils.logger import LOGGER
 
 
@@ -31,9 +30,7 @@ class Component(object):
         self._role_parameter_keywords = set()
         self._module_name = None
         self._component_param = {}
-        self._provider = None  # deprecated, to compatible with fate-1.7.0
-        self._source_provider = None
-        self._provider_version = None
+        self._provider = None
 
     def __new__(cls, *args, **kwargs):
         if cls.__name__.lower() not in cls.__instance:
@@ -59,18 +56,6 @@ class Component(object):
     @provider.setter
     def provider(self, provider):
         self._provider = provider
-
-    @property
-    def source_provider(self):
-        return self._source_provider
-
-    @property
-    def provider_version(self):
-        return self._provider_version
-
-    @provider_version.setter
-    def provider_version(self, provider_version):
-        self._provider_version = provider_version
 
     def get_party_instance(self, role="guest", party_id=None) -> 'Component':
         if role not in ["guest", "host", "arbiter"]:
@@ -218,24 +203,6 @@ class Component(object):
 
     def _get_all_party_instance(self):
         return self.__party_instance
-
-
-class FateComponent(Component):
-    def __init__(self, *args, **kwargs):
-        super(FateComponent, self).__init__(*args, **kwargs)
-        self._source_provider = ProviderType.FATE
-
-
-class FateFlowComponent(Component):
-    def __init__(self, *args, **kwargs):
-        super(FateFlowComponent, self).__init__(*args, **kwargs)
-        self._source_provider = ProviderType.FATE_FLOW
-
-
-class FateSqlComponent(Component):
-    def __init__(self, *args, **kwargs):
-        super(FateSqlComponent, self).__init__(*args, **kwargs)
-        self._source_provider = ProviderType.FATE_SQL
 
 
 class PlaceHolder(object):

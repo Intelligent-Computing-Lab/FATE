@@ -85,9 +85,6 @@ class StorageTable(StorageTableBase):
         sql = "drop table {}.{}".format(self._address.database, self._address.name)
         return self.execute(sql)
 
-    def _save_as(self, address, name, namespace, partitions, **kwargs):
-        pass
-
     def execute(self, sql):
         exec_id = self._execute_entrance(sql)
         while True:

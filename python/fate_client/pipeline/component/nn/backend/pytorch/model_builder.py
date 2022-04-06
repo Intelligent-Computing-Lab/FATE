@@ -14,12 +14,7 @@
 #  limitations under the License.
 #
 
-_TORCH_VALID = False
-try:
-    import torch.nn as nn
-    _TORCH_VALID = True
-except ImportError:
-    pass
+import torch.nn as nn
 
 
 def build_model(model_type="sequential"):
@@ -31,9 +26,6 @@ def build_model(model_type="sequential"):
 
 class SequentialModel(object):
     def __init__(self):
-        if _TORCH_VALID:
-            self._model = nn.Sequential()
-        else:
-            self._model = None
+        self._model = nn.Sequential()
 
 

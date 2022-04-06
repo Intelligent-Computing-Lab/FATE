@@ -31,8 +31,6 @@ class Table(CTableABC):
         self._rp = rp
         self._engine = ComputingEngine.EGGROLL
 
-        self._count = None
-
     @property
     def engine(self):
         return self._engine
@@ -40,9 +38,6 @@ class Table(CTableABC):
     @property
     def partitions(self):
         return self._rp.get_partitions()
-
-    def copy(self):
-        return Table(self._rp.map_values(lambda x: x))
 
     @computing_profile
     def save(self, address, partitions, schema: dict, **kwargs):
@@ -68,9 +63,7 @@ class Table(CTableABC):
 
     @computing_profile
     def count(self, **kwargs) -> int:
-        if self._count is None:
-            self._count = self._rp.count()
-        return self._count
+        return self._rp.count()
 
     @computing_profile
     def take(self, n=1, **kwargs):

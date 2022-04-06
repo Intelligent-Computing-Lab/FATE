@@ -140,7 +140,7 @@ RSA, RAW, and DH intersection methods support:
     for more details.
 4.  Preprocessing step to pre-filter Host's data for faster PSI
 
-RSA and DH intersection methods also support:
+RAW and DH intersection methods also support:
 
 1.  PSI with cache
 

@@ -21,7 +21,7 @@ from fate_arch.session import is_table
 
 
 class FixedPointEndec(object):
-    def __init__(self, field: int, base: int, precision_fractional: int, *args, **kwargs):
+    def __init__(self, field: int, base: int, precision_fractional: int):
         self.field = field
         self.base = base
         self.precision_fractional = precision_fractional

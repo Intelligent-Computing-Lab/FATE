@@ -115,6 +115,9 @@ which HE and Secret-Sharing hybrid protocol is included.
 >     >   - nesterov\_momentum\_sgd  
 >     >     Nesterov Momentum
 >     > 
+>     >   - sqn  
+>     >     stochastic quansi-newton. More details is available in this
+>     >     [A Quasi-Newton Method Based Vertical Federated Learning Framework for Logistic Regression](https://arxiv.org/abs/1912.00513v2).
 > 
 > 5.  Three converge criteria:
 >     
@@ -154,15 +157,14 @@ which HE and Secret-Sharing hybrid protocol is included.
 
   - Hetero-LR extra features
 
-1. Support different encrypt-mode to balance speed and security
-2. Support OneVeRest
-3. When modeling a multi-host task, "weight\_diff" converge criteria
+> 1.  Support different encrypt-mode to balance speed and security
+> 2.  Support OneVeRest
+> 3.  When modeling a multi-host task, "weight\_diff" converge criteria
 >     is supported only.
-4. Support sparse format data
-5. Support early-stopping mechanism
-6. Support setting arbitrary metrics for validation during training
-7. Support stepwise. For details on stepwise mode, please refer [stepwise](stepwise.md).
-8. Support batch shuffle and batch masked strategy.
+> 4.  Support sparse format data
+> 5.  Support early-stopping mechanism
+> 6.  Support setting arbitrary metrics for validation during training
+> 7.  Support stepwise. For details on stepwise mode, please refer [stepwise](stepwise.md).
 
  - Hetero-SSHE-LR extra features
   > 1. Support different encrypt-mode to balance speed and security

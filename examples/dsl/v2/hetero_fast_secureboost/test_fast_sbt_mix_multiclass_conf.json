@@ -22,7 +22,7 @@
                 "num_trees": 4,
                 "validation_freqs": 1,
                 "encrypt_param": {
-                    "method": "Paillier"
+                    "method": "iterativeAffine"
                 },
                 "tree_num_per_party": 1,
                 "work_mode": "mix",
@@ -39,7 +39,7 @@
                 "0": {
                     "reader_0": {
                         "table": {
-                            "name": "vehicle_scale_hetero_guest",
+                            "name": "breast_hetero_guest",
                             "namespace": "experiment"
                         }
                     },
@@ -49,7 +49,7 @@
                     },
                     "reader_1": {
                         "table": {
-                            "name": "vehicle_scale_hetero_guest",
+                            "name": "breast_hetero_guest",
                             "namespace": "experiment"
                         }
                     },
@@ -63,7 +63,7 @@
                 "0": {
                     "reader_0": {
                         "table": {
-                            "name": "vehicle_scale_hetero_host",
+                            "name": "breast_hetero_host",
                             "namespace": "experiment"
                         }
                     },
@@ -72,7 +72,7 @@
                     },
                     "reader_1": {
                         "table": {
-                            "name": "vehicle_scale_hetero_host",
+                            "name": "breast_hetero_host",
                             "namespace": "experiment"
                         }
                     },

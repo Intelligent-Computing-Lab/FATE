@@ -169,10 +169,10 @@
             "input": {
                 "data": {
                     "train_data": [
-                        "intersection_0.data"
+                        "hetero_feature_selection_0.data"
                     ],
                     "validate_data": [
-                        "intersection_1.data"
+                        "hetero_feature_selection_1.data"
                     ]
                 }
             },

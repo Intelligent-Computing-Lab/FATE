@@ -1,9 +1,9 @@
 parties: # parties default id
   guest:
-    - 9999
-  host:
     - 10000
+  host:
     - 9999
+    - 10000
   arbiter:
     - 10000
 

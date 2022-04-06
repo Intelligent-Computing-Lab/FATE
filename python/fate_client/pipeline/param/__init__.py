@@ -45,6 +45,7 @@ from pipeline.param.union_param import UnionParam
 from pipeline.param.boosting_param import ObjectiveParam
 from pipeline.param.boosting_param import DecisionTreeParam
 from pipeline.param.predict_param import PredictParam
+from pipeline.param.sbt_feature_transformer_param import SBTTransformerParam
 from pipeline.param.feature_imputation_param import FeatureImputationParam
 from pipeline.param.label_transform_param import LabelTransformParam
 from pipeline.param.sir_param import SecureInformationRetrievalParam
@@ -57,7 +58,7 @@ __all__ = ["HeteroSecureBoostParam", "HomoSecureBoostParam", "HeteroFastSecureBo
            "IntersectParam", "LinearParam", "LocalBaselineParam", "HeteroLogisticParam",
            "HomoLogisticParam", "PearsonParam", "PoissonParam", "PSIParam", "SampleParam",
            "SampleWeightParam", "ScaleParam", "ScorecardParam",
-           "UnionParam", "ObjectiveParam", "DecisionTreeParam", "PredictParam",
+           "UnionParam", "ObjectiveParam", "DecisionTreeParam", "PredictParam",  "SBTTransformerParam",
            "FeatureImputationParam", "LabelTransformParam",
            "SecureInformationRetrievalParam","CacheLoaderParam"]
 

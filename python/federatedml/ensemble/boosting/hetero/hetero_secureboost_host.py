@@ -1,7 +1,6 @@
 from typing import List
 import functools
 import copy
-import random
 import numpy as np
 from scipy import sparse as sp
 from federatedml.util import LOGGER
@@ -36,19 +35,13 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
         self.max_sample_weight = None
         self.round_decimal = None
         self.new_ver = True
-        self.feature_importances_ = {}
 
         # for fast hist
         self.sparse_opt_para = False
         self.run_sparse_opt = False
         self.has_transformed_data = False
         self.data_bin_dense = None
-        self.hetero_sbt_transfer_variable = HeteroSecureBoostTransferVariable()
-
-        # EINI predict param
-        self.EINI_inference = False
-        self.EINI_random_mask = False
-        self.EINI_complexity_check = False
+        self.predict_transfer_inst = HeteroSecureBoostTransferVariable()
 
     def _init_model(self, param: HeteroSecureBoostParam):
 
@@ -61,9 +54,6 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
         self.sparse_opt_para = param.sparse_optimization
         self.cipher_compressing = param.cipher_compress
         self.new_ver = param.new_ver
-        self.EINI_inference = param.EINI_inference
-        self.EINI_random_mask = param.EINI_random_mask
-        self.EINI_complexity_check = param.EINI_complexity_check
 
         if self.use_missing:
             self.tree_param.use_missing = self.use_missing
@@ -89,29 +79,41 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
         new_data.features = sp.csc_matrix(np.array(new_feature_sparse_point_array) + offset)
         return new_data
 
-    def update_feature_importance(self, tree_feature_importance):
-        for fid in tree_feature_importance:
-            if fid not in self.feature_importances_:
-                self.feature_importances_[fid] = tree_feature_importance[fid]
-            else:
-                self.feature_importances_[fid] += tree_feature_importance[fid]
-        LOGGER.debug('cur feature importance {}'.format(self.feature_importances_))
+    def check_run_sp_opt(self):
+        # if run fast hist, generate dense d_dtable and set related variables
+        self.run_sparse_opt = (self.encrypt_param.method.lower() == consts.ITERATIVEAFFINE.lower()) and \
+                              self.sparse_opt_para
 
-    def sync_feature_importance(self):
-        # generate anonymous
-        new_feat_importance = {}
-        sitename = 'host:' + str(self.component_properties.local_partyid)
-        for key in self.feature_importances_:
-            new_feat_importance[(sitename, key)] = self.feature_importances_[key]
-        self.hetero_sbt_transfer_variable.host_feature_importance.remote(new_feat_importance)
+        if self.run_sparse_opt:
+            LOGGER.info('host is running fast histogram mode')
+
+        # for fast hist computation, data preparation
+        if self.run_sparse_opt and not self.has_transformed_data:
+            # start data transformation for fast histogram mode
+            if not self.use_missing or (self.use_missing and not self.zero_as_missing):
+                feature_sparse_point_array = [self.bin_sparse_points[i] for i in range(len(self.bin_sparse_points))]
+            else:
+                feature_sparse_point_array = [-1 for i in range(len(self.bin_sparse_points))]
+            sparse_to_array = functools.partial(
+                HeteroSecureBoostingTreeHost.sparse_to_array,
+                feature_sparse_point_array=feature_sparse_point_array,
+                use_missing=self.use_missing,
+                zero_as_missing=self.zero_as_missing
+            )
+            self.data_bin_dense = self.data_bin.mapValues(sparse_to_array)
+
+            self.has_transformed_data = True
 
     def fit_a_booster(self, epoch_idx: int, booster_dim: int):
 
+        self.check_run_sp_opt()
         tree = HeteroDecisionTreeHost(tree_param=self.tree_param)
         tree.init(flowid=self.generate_flowid(epoch_idx, booster_dim),
                   valid_features=self.sample_valid_features(),
                   data_bin=self.data_bin, bin_split_points=self.bin_split_points,
                   bin_sparse_points=self.bin_sparse_points,
+                  run_sprase_opt=self.run_sparse_opt,
+                  data_bin_dense=self.data_bin_dense,
                   runtime_idx=self.component_properties.local_partyid,
                   goss_subsample=self.enable_goss,
                   bin_num=self.bin_num,
@@ -119,10 +121,8 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
                   cipher_compressing=self.cipher_compressing,
                   new_ver=self.new_ver
                   )
-        tree.fit()
-        self.update_feature_importance(tree.get_feature_importance())
-        self.sync_feature_importance()
 
+        tree.fit()
         return tree
 
     def load_booster(self, model_meta, model_param, epoch_idx, booster_idx):
@@ -135,6 +135,7 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
     def generate_summary(self) -> dict:
 
         summary = {'best_iteration': self.callback_variables.best_iteration, 'is_converged': self.is_converged}
+
         LOGGER.debug('summary is {}'.format(summary))
 
         return summary
@@ -153,17 +154,16 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
     @staticmethod
     def traverse_trees(leaf_pos, sample, trees: List[HeteroDecisionTreeHost]):
 
-        new_leaf_pos = {'node_pos': leaf_pos['node_pos'], 'reach_leaf_node': leaf_pos['reach_leaf_node'] + False}
         for t_idx, tree in enumerate(trees):
 
-            cur_node_idx = new_leaf_pos['node_pos'][t_idx]
+            cur_node_idx = leaf_pos['node_pos'][t_idx]
             # idx is set as -1 when a sample reaches leaf
             if cur_node_idx == -1:
                 continue
             nid, _ = HeteroSecureBoostingTreeHost.traverse_a_tree(tree, sample, cur_node_idx)
-            new_leaf_pos['node_pos'][t_idx] = nid
+            leaf_pos['node_pos'][t_idx] = nid
 
-        return new_leaf_pos
+        return leaf_pos
 
     def boosting_fast_predict(self, data_inst, trees: List[HeteroDecisionTreeHost]):
 
@@ -175,183 +175,18 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
 
             LOGGER.debug('cur predict round is {}'.format(comm_round))
 
-            stop_flag = self.hetero_sbt_transfer_variable.predict_stop_flag.get(idx=0, suffix=(comm_round,))
+            stop_flag = self.predict_transfer_inst.predict_stop_flag.get(idx=0, suffix=(comm_round, ))
             if stop_flag:
                 break
 
-            guest_node_pos = self.hetero_sbt_transfer_variable.guest_predict_data.get(idx=0, suffix=(comm_round,))
+            guest_node_pos = self.predict_transfer_inst.guest_predict_data.get(idx=0, suffix=(comm_round, ))
             host_node_pos = guest_node_pos.join(data_inst, traverse_func)
             if guest_node_pos.count() != host_node_pos.count():
                 raise ValueError('sample count mismatch: guest table {}, host table {}'.format(guest_node_pos.count(),
                                                                                                host_node_pos.count()))
-            self.hetero_sbt_transfer_variable.host_predict_data.remote(host_node_pos, idx=-1, suffix=(comm_round,))
+            self.predict_transfer_inst.host_predict_data.remote(host_node_pos, idx=-1, suffix=(comm_round, ))
 
             comm_round += 1
-
-    @staticmethod
-    def go_to_children_branches(data_inst, tree_node, tree, sitename: str, candidate_list: List):
-        if tree_node.is_leaf:
-            candidate_list.append(tree_node)
-        else:
-            tree_node_list = tree.tree_node
-            if tree_node.sitename != sitename:
-                HeteroSecureBoostingTreeHost.go_to_children_branches(data_inst, tree_node_list[tree_node.left_nodeid],
-                                                                     tree, sitename, candidate_list)
-                HeteroSecureBoostingTreeHost.go_to_children_branches(data_inst, tree_node_list[tree_node.right_nodeid],
-                                                                     tree, sitename, candidate_list)
-            else:
-                next_layer_node_id = tree.go_next_layer(tree_node, data_inst, use_missing=tree.use_missing,
-                                                        zero_as_missing=tree.zero_as_missing, decoder=tree.decode,
-                                                        split_maskdict=tree.split_maskdict,
-                                                        missing_dir_maskdict=tree.missing_dir_maskdict,
-                                                        bin_sparse_point=None
-                                                        )
-                HeteroSecureBoostingTreeHost.go_to_children_branches(data_inst, tree_node_list[next_layer_node_id],
-                                                                     tree, sitename, candidate_list)
-
-    @staticmethod
-    def generate_leaf_candidates_host(data_inst, sitename, trees, node_pos_map_list):
-        candidate_nodes_of_all_tree = []
-
-        for tree, node_pos_map in zip(trees, node_pos_map_list):
-
-            result_vec = [0 for i in range(len(node_pos_map))]
-            candidate_list = []
-            HeteroSecureBoostingTreeHost.go_to_children_branches(data_inst, tree.tree_node[0], tree, sitename,
-                                                                 candidate_list)
-            for node in candidate_list:
-                result_vec[node_pos_map[node.id]] = 1  # create 0-1 vector
-            candidate_nodes_of_all_tree.extend(result_vec)
-
-        return np.array(candidate_nodes_of_all_tree)
-
-    @staticmethod
-    def generate_leaf_idx_dimension_map(trees, booster_dim):
-        cur_dim = 0
-        leaf_dim_map = {}
-        leaf_idx = 0
-        for tree in trees:
-            for node in tree.tree_node:
-                if node.is_leaf:
-                    leaf_dim_map[leaf_idx] = cur_dim
-                    leaf_idx += 1
-            cur_dim += 1
-            if cur_dim == booster_dim:
-                cur_dim = 0
-        return leaf_dim_map
-
-    @staticmethod
-    def merge_position_vec(host_vec, guest_encrypt_vec, booster_dim=1, leaf_idx_dim_map=None, random_mask=None):
-
-        leaf_idx = -1
-        rs = [0 for i in range(booster_dim)]
-        for en_num, vec_value in zip(guest_encrypt_vec, host_vec):
-            leaf_idx += 1
-            if vec_value == 0:
-                continue
-            else:
-                dim = leaf_idx_dim_map[leaf_idx]
-                rs[dim] += en_num
-
-        if random_mask:
-            for i in range(len(rs)):
-                rs[i] = rs[i] * random_mask  # a pos random mask btw 1 and 2
-
-        return rs
-
-    @staticmethod
-    def position_vec_element_wise_mul(guest_encrypt_vec, host_vec):
-        new_vec = []
-        for en_num, vec_value in zip(guest_encrypt_vec, host_vec):
-            new_vec.append(en_num * vec_value)
-        return new_vec
-
-    @staticmethod
-    def get_leaf_idx_map(trees):
-
-        id_pos_map_list = []
-        for tree in trees:
-            array_idx = 0
-            id_pos_map = {}
-            for node in tree.tree_node:
-                if node.is_leaf:
-                    id_pos_map[node.id] = array_idx
-                    array_idx += 1
-            id_pos_map_list.append(id_pos_map)
-
-        return id_pos_map_list
-
-    def count_complexity_helper(self, node, node_list, host_sitename, meet_host_node):
-
-        if node.is_leaf:
-            return 1 if meet_host_node else 0
-        if node.sitename == host_sitename:
-            meet_host_node = True
-
-        return self.count_complexity_helper(node_list[node.left_nodeid], node_list, host_sitename, meet_host_node) + \
-               self.count_complexity_helper(node_list[node.right_nodeid], node_list, host_sitename, meet_host_node)
-
-    def count_complexity(self, trees):
-
-        tree_valid_leaves_num = []
-        sitename = self.role + ":" + str(self.component_properties.local_partyid)
-        for tree in trees:
-            valid_leaf_num = self.count_complexity_helper(tree.tree_node[0], tree.tree_node, sitename, False)
-            if valid_leaf_num != 0:
-                tree_valid_leaves_num.append(valid_leaf_num)
-
-        complexity = 1
-        for num in tree_valid_leaves_num:
-            complexity *= num
-
-        return complexity
-
-    def EINI_host_predict(self, data_inst, trees: List[HeteroDecisionTreeHost], sitename, self_party_id, party_list,
-                          random_mask=False):
-
-        if self.EINI_complexity_check:
-            complexity = self.count_complexity(trees)
-            LOGGER.debug('checking EINI complexity: {}'.format(complexity))
-            if complexity < consts.EINI_TREE_COMPLEXITY:
-                raise ValueError('tree complexity: {}, is lower than safe '
-                                 'threshold, inference is not allowed.'.format(complexity))
-        id_pos_map_list = self.get_leaf_idx_map(trees)
-        map_func = functools.partial(self.generate_leaf_candidates_host, sitename=sitename, trees=trees,
-                                     node_pos_map_list=id_pos_map_list)
-        position_vec = data_inst.mapValues(map_func)
-
-        booster_dim = self.booster_dim
-        random_mask = random.SystemRandom().random() + 1 if random_mask else 0  # generate a random mask btw 1 and 2
-
-        self_idx = party_list.index(self_party_id)
-        if len(party_list) == 1:
-            guest_position_vec = self.hetero_sbt_transfer_variable.guest_predict_data.get(idx=0, suffix='position_vec')
-            leaf_idx_dim_map = self.generate_leaf_idx_dimension_map(trees, booster_dim)
-            merge_func = functools.partial(self.merge_position_vec, booster_dim=booster_dim,
-                                           leaf_idx_dim_map=leaf_idx_dim_map, random_mask=random_mask)
-            result_table = position_vec.join(guest_position_vec, merge_func)
-            self.hetero_sbt_transfer_variable.host_predict_data.remote(result_table, suffix='merge_result')
-        else:
-            # multi host case
-            # if is first host party, get encrypt vec from guest, else from previous host party
-            if self_party_id == party_list[0]:
-                guest_position_vec = self.hetero_sbt_transfer_variable.guest_predict_data.get(idx=0,
-                                                                                              suffix='position_vec')
-            else:
-                guest_position_vec = self.hetero_sbt_transfer_variable.inter_host_data.get(idx=self_idx - 1,
-                                                                                           suffix='position_vec')
-
-            if self_party_id == party_list[-1]:
-                leaf_idx_dim_map = self.generate_leaf_idx_dimension_map(trees, booster_dim)
-                func = functools.partial(self.merge_position_vec, booster_dim=booster_dim,
-                                         leaf_idx_dim_map=leaf_idx_dim_map, random_mask=random_mask)
-                result_table = position_vec.join(guest_position_vec, func)
-                self.hetero_sbt_transfer_variable.host_predict_data.remote(result_table, suffix='merge_result')
-            else:
-                result_table = position_vec.join(guest_position_vec, self.position_vec_element_wise_mul)
-                self.hetero_sbt_transfer_variable.inter_host_data.remote(result_table, idx=self_idx + 1,
-                                                                         suffix='position_vec',
-                                                                         role=consts.HOST)
 
     @assert_io_num_rows_equal
     def predict(self, data_inst):
@@ -375,12 +210,7 @@ class HeteroSecureBoostingTreeHost(HeteroBoostingHost):
             LOGGER.info('no tree for predicting, prediction done')
             return
 
-        if self.EINI_inference and not self.on_training:  # EINI is designed for inference stage
-            sitename = self.role + ':' + str(self.component_properties.local_partyid)
-            self.EINI_host_predict(processed_data, trees, sitename, self.component_properties.local_partyid,
-                                   self.component_properties.host_party_idlist, self.EINI_random_mask)
-        else:
-            self.boosting_fast_predict(processed_data, trees=trees)
+        self.boosting_fast_predict(processed_data, trees=trees)
 
     def get_model_meta(self):
         model_meta = BoostingTreeModelMeta()

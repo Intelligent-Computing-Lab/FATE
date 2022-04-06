@@ -21,6 +21,7 @@ from abc import ABC
 import abc
 from federatedml.ensemble.boosting.boosting_core import Boosting
 from federatedml.param.boosting_param import HeteroBoostingParam
+from federatedml.secureprotol import IterativeAffineEncrypt
 from federatedml.secureprotol import PaillierEncrypt
 from federatedml.secureprotol.encrypt_mode import EncryptModeCalculator
 from federatedml.util import consts
@@ -63,8 +64,16 @@ class HeteroBoosting(Boosting, ABC):
         if self.encrypt_param.method.lower() == consts.PAILLIER.lower():
             self.encrypter = PaillierEncrypt()
             self.encrypter.generate_key(self.encrypt_param.key_length)
+        elif self.encrypt_param.method.lower() == consts.ITERATIVEAFFINE.lower():
+            self.encrypter = IterativeAffineEncrypt()
+            self.encrypter.generate_key(key_size=self.encrypt_param.key_length,
+                                        randomized=False)
+        elif self.encrypt_param.method.lower() == consts.RANDOM_ITERATIVEAFFINE.lower():
+            self.encrypter = IterativeAffineEncrypt()
+            self.encrypter.generate_key(key_size=self.encrypt_param.key_length,
+                                        randomized=True)
         else:
-            raise NotImplementedError("unknown encrypt type {}".format(self.encrypt_param.method.lower()))
+            raise NotImplementedError("unknown encrypt type {}".format(type(self.encrypt_param.method.lower())))
         self.encrypted_calculator = EncryptModeCalculator(self.encrypter, self.calculated_mode, self.re_encrypted_rate)
 
     def check_label(self):
@@ -144,8 +153,6 @@ class HeteroBoostingGuest(HeteroBoosting, ABC):
         LOGGER.info('begin to fit a hetero boosting model, model is {}'.format(self.model_name))
 
         self.start_round = 0
-
-        self.on_training = True
 
         self.data_inst = data_inst
 
@@ -296,8 +303,6 @@ class HeteroBoostingHost(HeteroBoosting, ABC):
 
         self.start_round = 0
 
-        self.on_training = True
-
         self.data_bin, self.bin_split_points, self.bin_sparse_points = self.prepare_data(data_inst)
 
         if self.is_warm_start:
@@ -329,7 +334,7 @@ class HeteroBoostingHost(HeteroBoosting, ABC):
             self.callback_list.on_epoch_end(epoch_idx)
             should_stop = self.sync_stop_flag(epoch_idx)
             self.is_converged = should_stop
-            if should_stop or self.stop_training:
+            if should_stop:
                 break
 
         self.callback_list.on_train_end()
