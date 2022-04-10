@@ -32,8 +32,8 @@ venv
 /arch/networking/target/
 /arch/target/
 /fateboard/target/
-/data/
-/logs/
+#/data/
+#/logs/
 /jobs/
 /audit/
 .vscode/*
