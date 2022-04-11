@@ -1,10 +1,10 @@
 {
-  "file": "/software/Git/FATE/examples/data/vehicle_scale_homo_test.csv",
+  "file": "/software/Git/FATE/examples/data/mnist_train",
   "id_delimiter":",",
   "head": 1,
   "partition": 4,
   "work_mode": 0,
   "backend":0,
   "namespace": "experiment",
-  "table_name": "vehicle_scale_homo_test"
+  "table_name": "mnist_images_guest"
 }

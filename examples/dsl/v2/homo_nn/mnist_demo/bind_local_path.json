@@ -1,8 +1,8 @@
 {
     "engine": "PATH",
     "namespace": "experiment",
-    "name": "mnist_images2",
+    "name": "mnist_images_guest",
     "address": {
-        "path": "$PROJECT_BASE/examples/data/mnist_train"
+        "path": "/software/Git/FATE/examples/data/mnist_eval"
     }
 }
