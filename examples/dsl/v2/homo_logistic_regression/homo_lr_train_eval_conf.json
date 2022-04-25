@@ -59,7 +59,7 @@
                     },
                     "reader_1": {
                         "table": {
-                            "name": "breast_homo_host",
+                            "name": "breast_homo_test",
                             "namespace": "experiment"
                         }
                     },
@@ -75,7 +75,7 @@
                 "0": {
                     "reader_1": {
                         "table": {
-                            "name": "breast_homo_guest",
+                            "name": "breast_homo_test",
                             "namespace": "experiment"
                         }
                     },
