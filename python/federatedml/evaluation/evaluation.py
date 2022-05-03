@@ -91,6 +91,7 @@ class Evaluation(ModelBase):
         else:
             LOGGER.warning("Evaluation has not transform, return")
 
+
     def split_data_with_type(self, data: list) -> dict:
 
         split_result = defaultdict(list)
@@ -310,6 +311,7 @@ class Evaluation(ModelBase):
         self.check_data(data)
 
         LOGGER.debug(f'running eval, data: {data}')
+
         self.eval_results.clear()
         for (key, eval_data) in data.items():
 
